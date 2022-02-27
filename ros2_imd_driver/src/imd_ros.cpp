@@ -7,7 +7,7 @@
 IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &options) :
     Node("imd_node", name_space, options), tf_broadcaster_(this)
 {
-    RCLCPP_INFO(this->get_logger(), "Starting %s/%s", this->get_namespace(), this->get_name());
+    RCLCPP_INFO(this->get_logger(), "Starting %s%s", this->get_namespace(), this->get_name());
 
     this->declare_parameter("publish_tf", true);
 
@@ -167,7 +167,7 @@ IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &optio
 IMDNode::~IMDNode()
 {
     process_timer_->cancel();
-    RCLCPP_INFO(this->get_logger(), "Destroyed %s/%s process.", this->get_namespace(), this->get_name());
+    RCLCPP_INFO(this->get_logger(), "Destroyed %s%s process.", this->get_namespace(), this->get_name());
 }
 
 void IMDNode::motorCmdCallback_(const MotorCmdMsg::SharedPtr msg, const int m_index)

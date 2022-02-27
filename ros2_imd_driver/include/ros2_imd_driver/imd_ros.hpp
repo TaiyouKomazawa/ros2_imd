@@ -32,7 +32,7 @@ public:
         const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
 
     IMDNode(
-        const rclcpp::NodeOptions &options = rclcpp::NodeOptions()):IMDNode("", options) {}
+        const rclcpp::NodeOptions &options = rclcpp::NodeOptions()):IMDNode("/", options) {}
 
     virtual ~IMDNode();
 
