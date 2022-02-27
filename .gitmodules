@@ -1,0 +1,3 @@
+[submodule "ros2_imd_driver/IMDController"]
+	path = ros2_imd_driver/IMDController
+	url = https://github.com/TaiyouKomazawa/IMDController.git
