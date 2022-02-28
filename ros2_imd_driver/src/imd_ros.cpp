@@ -183,7 +183,7 @@ void IMDNode::motorCmdCallback_(const MotorCmdMsg::SharedPtr msg, const int m_in
     std::lock_guard<std::mutex> lock(mutex_);
 
     float rps = msg->velocity / (2 * M_PI);
-    md_->set_speed((IMDController::motor_t)m_index, rps);
+    md_->set_rps((IMDController::motor_t)m_index, rps);
     motor_[m_index].last_cmded_velocity = msg->velocity;
 }
 
