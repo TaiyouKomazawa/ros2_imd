@@ -43,17 +43,20 @@ private:
         IMDController::motor_param_t param;
         MotorFeedPublisher pub;
         MotorCmdSubscription sub;
+        float last_cmded_velocity;
     } motor_node_t;
 
     std::vector<motor_node_t> motor_ = {
         {"m1",
          IMDController::motor_param_t(),
          MotorFeedPublisher(),
-         MotorCmdSubscription()},
+         MotorCmdSubscription(),
+         0.0},
         {"m2",
          IMDController::motor_param_t(),
          MotorFeedPublisher(),
-         MotorCmdSubscription()}
+         MotorCmdSubscription(),
+         0.0}
     };
 
     const struct

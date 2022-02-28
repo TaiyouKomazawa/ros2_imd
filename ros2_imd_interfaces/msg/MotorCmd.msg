@@ -1,2 +1,2 @@
-# speed [rad/sec]
-float32 speed
+# velocity [rad/sec]
+float32 velocity

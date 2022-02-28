@@ -172,10 +172,11 @@ IMDNode::~IMDNode()
 
 void IMDNode::motorCmdCallback_(const MotorCmdMsg::SharedPtr msg, const int m_index)
 {
-    float speed = msg->speed / (2 * M_PI);
-    mutex_.lock();
-    md_->set_speed((IMDController::motor_t)m_index, speed);
-    mutex_.unlock();
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    float rps = msg->velocity / (2 * M_PI);
+    md_->set_speed((IMDController::motor_t)m_index, rps);
+    motor_[m_index].last_cmded_velocity = msg->velocity;
 }
 
 void IMDNode::publishTransform_(const MotorFeedMsg& msg,
@@ -196,9 +197,10 @@ void IMDNode::publishTransform_(const MotorFeedMsg& msg,
 
 void IMDNode::processCallback_()
 {
-    mutex_.lock();
+    std::lock_guard<std::mutex> lock(mutex_);
+
     md_->update();
-    mutex_.unlock();
+
     if (md_->state_updated())
     {
         ctrl_feed_msg_t feed = md_->get_state();
@@ -209,7 +211,8 @@ void IMDNode::processCallback_()
             feed_msg.header.stamp = this->get_clock()->now();
             feed_msg.header.frame_id = motor_[i].name+"_frame";
             feed_msg.pose = 2 * M_PI * feed.angle[i];
-            feed_msg.speed = 2 * M_PI * feed.velocity[i];
+            feed_msg.velocity = 2 * M_PI * feed.velocity[i];
+            feed_msg.velocity_error = feed_msg.velocity - motor_[i].last_cmded_velocity;
             motor_[i].pub->publish(feed_msg);
 
             if(publish_tf_)
