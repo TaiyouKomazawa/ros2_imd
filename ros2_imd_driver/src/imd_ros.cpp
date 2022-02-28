@@ -7,7 +7,7 @@
 IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &options) :
     Node("imd_node", name_space, options), tf_broadcaster_(this)
 {
-    RCLCPP_INFO(this->get_logger(), "Starting %s%s", this->get_namespace(), this->get_name());
+    RCLCPP_INFO(this->get_logger(), "Starting ns=%s,exec=%s", this->get_namespace(), this->get_name());
 
     this->declare_parameter("publish_tf", true);
 
@@ -79,15 +79,15 @@ IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &optio
         mcp2210_cs_pin = (MCP2210Linux::cs_pin_t)param_cs_pin.as_int();
 
         if (mcp2210_cs_pin > MCP2210Linux::GP8)
-            RCLCPP_WARN(this->get_logger(), "The chip selector pin name is incorrect. So we will use 0 (GP0) instead.");
+            RCLCPP_WARN(this->get_logger(), "The chip selector pin name is incorrect. So we will use 0 (GP0) instead.\n");
         else
-            RCLCPP_INFO(this->get_logger(), "GP%d was specified as the chip selector pin name.", mcp2210_cs_pin);
+            RCLCPP_INFO(this->get_logger(), "GP%d was specified as the chip selector pin name.\n", mcp2210_cs_pin);
     }
     else
     {
         mcp2210_cs_pin = MCP2210Linux::GP0;
 
-        RCLCPP_WARN(this->get_logger(), "The chip selector pin name is not specified. So we will use 0 (GP0) instead.");
+        RCLCPP_WARN(this->get_logger(), "The chip selector pin name is not specified. So we will use 0 (GP0) instead.\n");
     }
 
     md_.reset(new IMDController((wchar_t *)mcp2210_serial_number.c_str(), mcp2210_cs_pin));
@@ -102,19 +102,27 @@ IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &optio
 
         if (m.param.encoder_cpr <= 0)
         {
-            RCLCPP_FATAL(this->get_logger(), "'%s' is invalid value.\t(correct range : x > 0)", (m.name + "encoder_cpr").c_str());
+            RCLCPP_FATAL(this->get_logger(), "'%s' is invalid value.\t(correct range : x > 0)", (m.name + ".encoder_cpr").c_str());
             fatal_init_param = true;
         }
+        else
+            RCLCPP_INFO(this->get_logger(), "%s : %d[count/revolution]", (m.name + ".encoder_cpr").c_str(), m.param.encoder_cpr);
+
         if (m.param.gear_ratio <= 0.0)
         {
-            RCLCPP_FATAL(this->get_logger(), "'%s' is invalid value.\t(correct range : x > 0.0)", (m.name + "gear_ratio").c_str());
+            RCLCPP_FATAL(this->get_logger(), "'%s' is invalid value.\t(correct range : x > 0.0)", (m.name + ".gear_ratio").c_str());
             fatal_init_param = true;
         }
+        else
+            RCLCPP_INFO(this->get_logger(), "%s : %f[-]", (m.name + ".gear_ratio").c_str(), m.param.gear_ratio);
+
         if (m.param.max_rps <= 0.0)
         {
-            RCLCPP_FATAL(this->get_logger(), "'%s' is invalid value.\t(correct range : x > 0.0)", (m.name + "max_rps").c_str());
+            RCLCPP_FATAL(this->get_logger(), "'%s' is invalid value.\t(correct range : x > 0.0)", (m.name + ".max_rps").c_str());
             fatal_init_param = true;
         }
+        else
+            RCLCPP_INFO(this->get_logger(), "%s : %f[revolution/second]", (m.name + ".max_rps").c_str(), m.param.max_rps);
 
         m.param.cur.kp = this->get_parameter(m.name + ctrl_name_.current + ctrl_name_.param.kp).as_double();
         m.param.cur.ki = this->get_parameter(m.name + ctrl_name_.current + ctrl_name_.param.ki).as_double();
@@ -124,15 +132,15 @@ IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &optio
         m.param.vel.ki = this->get_parameter(m.name + ctrl_name_.velocity + ctrl_name_.param.ki).as_double();
         m.param.vel.kd = this->get_parameter(m.name + ctrl_name_.velocity + ctrl_name_.param.kd).as_double();
 
-        RCLCPP_INFO(this->get_logger(), "'%s' PID controller parameters[p,i,d] :\t[%f, %f, %f]",
+        RCLCPP_INFO(this->get_logger(), "'%s' PID controller parameters[p,i,d] :\t[%f, %f, %1f]",
                     (m.name + ctrl_name_.current).c_str(), m.param.cur.kp, m.param.cur.ki, m.param.cur.kd);
-        RCLCPP_INFO(this->get_logger(), "'%s' PID controller parameters[p,i,d] :\t[%f, %f, %f]",
+        RCLCPP_INFO(this->get_logger(), "'%s' PID controller parameters[p,i,d] :\t[%f, %f, %f]\n",
                     (m.name + ctrl_name_.velocity).c_str(), m.param.vel.kp, m.param.vel.ki, m.param.vel.kd);
     }
 
     if (!fatal_init_param)
     {
-        RCLCPP_INFO(this->get_logger(), "Activating controller. Please wait a little while...");
+        RCLCPP_INFO(this->get_logger(), "Activating controller. Please wait a little while...\n");
         md_->ctrl_begin(new IMDController::motor_param_t[2]{motor_[0].param, motor_[1].param});
         RCLCPP_INFO(this->get_logger(), "Controller is running.");
 
@@ -167,7 +175,7 @@ IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &optio
 IMDNode::~IMDNode()
 {
     process_timer_->cancel();
-    RCLCPP_INFO(this->get_logger(), "Destroyed %s%s process.", this->get_namespace(), this->get_name());
+    RCLCPP_INFO(this->get_logger(), "Destroyed ns=%s,exec=%s process.", this->get_namespace(), this->get_name());
 }
 
 void IMDNode::motorCmdCallback_(const MotorCmdMsg::SharedPtr msg, const int m_index)
