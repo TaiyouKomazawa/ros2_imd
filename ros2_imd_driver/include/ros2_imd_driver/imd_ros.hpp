@@ -32,7 +32,7 @@ public:
         const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
 
     IMDNode(
-        const rclcpp::NodeOptions &options = rclcpp::NodeOptions()):IMDNode("/", options) {}
+        const rclcpp::NodeOptions &options = rclcpp::NodeOptions()):IMDNode("", options) {}
 
     virtual ~IMDNode();
 
@@ -43,7 +43,8 @@ private:
         IMDController::motor_param_t param;
         MotorFeedPublisher pub;
         MotorCmdSubscription sub;
-        float last_cmded_velocity;
+        float cmd_vel;
+        bool cmd_updated;
     } motor_node_t;
 
     std::vector<motor_node_t> motor_ = {
@@ -51,12 +52,12 @@ private:
          IMDController::motor_param_t(),
          MotorFeedPublisher(),
          MotorCmdSubscription(),
-         0.0},
+         0.0, false},
         {"m2",
          IMDController::motor_param_t(),
          MotorFeedPublisher(),
          MotorCmdSubscription(),
-         0.0}
+         0.0, false}
     };
 
     const struct
@@ -71,15 +72,14 @@ private:
         } param;
     } ctrl_name_;
 
-    std::shared_ptr<IMDController> md_;
+    tf2_ros::TransformBroadcaster tf_broadcaster_;
+    std::string frame_ns_;
 
-    std::mutex mutex_;
+    std::shared_ptr<IMDController> md_;
 
     rclcpp::TimerBase::SharedPtr process_timer_;
 
     bool publish_tf_;
-
-    tf2_ros::TransformBroadcaster tf_broadcaster_;
 
     void motorCmdCallback_(const MotorCmdMsg::SharedPtr msg, const int m_index);
 

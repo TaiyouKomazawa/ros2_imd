@@ -8,6 +8,13 @@ IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &optio
     Node("imd_node", name_space, options), tf_broadcaster_(this)
 {
     RCLCPP_INFO(this->get_logger(), "Starting ns=%s,exec=%s", this->get_namespace(), this->get_name());
+    if(strlen(this->get_namespace()) > 1)
+    {
+        frame_ns_ = std::string(this->get_namespace()).substr(1) + ".";
+        std::replace(frame_ns_.begin(), frame_ns_.end(), '/', '.');
+    }
+    else
+        frame_ns_ = std::string("");
 
     this->declare_parameter("publish_tf", true);
 
@@ -90,7 +97,9 @@ IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &optio
         RCLCPP_WARN(this->get_logger(), "The chip selector pin name is not specified. So we will use 0 (GP0) instead.\n");
     }
 
+    
     md_.reset(new IMDController((wchar_t *)mcp2210_serial_number.c_str(), mcp2210_cs_pin));
+    
 
     bool fatal_init_param = false;
     for (auto &m : motor_)
@@ -141,11 +150,13 @@ IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &optio
     if (!fatal_init_param)
     {
         RCLCPP_INFO(this->get_logger(), "Activating controller. Please wait a little while...\n");
+        
         md_->ctrl_begin(new IMDController::motor_param_t[2]{motor_[0].param, motor_[1].param});
+        
         RCLCPP_INFO(this->get_logger(), "Controller is running.");
 
         process_timer_ = this->create_wall_timer(
-            std::chrono::milliseconds{10},
+            std::chrono::milliseconds(10),
             std::bind(
                 &IMDNode::processCallback_,
                 this));
@@ -180,11 +191,8 @@ IMDNode::~IMDNode()
 
 void IMDNode::motorCmdCallback_(const MotorCmdMsg::SharedPtr msg, const int m_index)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    float rps = msg->velocity / (2 * M_PI);
-    md_->set_rps((IMDController::motor_t)m_index, rps);
-    motor_[m_index].last_cmded_velocity = msg->velocity;
+    motor_[m_index].cmd_updated = true;
+    motor_[m_index].cmd_vel = msg->velocity;
 }
 
 void IMDNode::publishTransform_(const MotorFeedMsg& msg,
@@ -193,10 +201,10 @@ void IMDNode::publishTransform_(const MotorFeedMsg& msg,
     geometry_msgs::msg::TransformStamped transform;
 
     transform.header.stamp = msg.header.stamp;
-    transform.header.frame_id = m.name + "_frame";
-    transform.child_frame_id = m.name + "_link";
-    transform.transform.rotation.x = sin(msg.pose/2);
-    transform.transform.rotation.y = 0.0;
+    transform.header.frame_id = frame_ns_ + m.name + ".frame";
+    transform.child_frame_id = frame_ns_ + m.name + ".link";
+    transform.transform.rotation.x = 0.0;
+    transform.transform.rotation.y = sin(msg.pose/2);
     transform.transform.rotation.z = 0.0;
     transform.transform.rotation.w = cos(msg.pose/2);
 
@@ -205,8 +213,14 @@ void IMDNode::publishTransform_(const MotorFeedMsg& msg,
 
 void IMDNode::processCallback_()
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-
+    for (int i = 0; i < (int)motor_.size(); i++)
+    {
+        if (motor_[i].cmd_updated)
+        {
+            float rps = motor_[i].cmd_vel / (2 * M_PI);
+            md_->set_rps((IMDController::motor_t)i, rps);
+        }
+    }
     md_->update();
 
     if (md_->state_updated())
@@ -217,10 +231,10 @@ void IMDNode::processCallback_()
         {
             MotorFeedMsg feed_msg;
             feed_msg.header.stamp = this->get_clock()->now();
-            feed_msg.header.frame_id = motor_[i].name+"_frame";
+            feed_msg.header.frame_id = frame_ns_ + motor_[i].name + ".frame";
             feed_msg.pose = 2 * M_PI * feed.angle[i];
             feed_msg.velocity = 2 * M_PI * feed.velocity[i];
-            feed_msg.velocity_error = feed_msg.velocity - motor_[i].last_cmded_velocity;
+            feed_msg.velocity_error = feed_msg.velocity - motor_[i].cmd_vel;
             motor_[i].pub->publish(feed_msg);
 
             if(publish_tf_)
