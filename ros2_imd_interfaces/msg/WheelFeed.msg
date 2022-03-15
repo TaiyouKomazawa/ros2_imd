@@ -6,3 +6,5 @@ float64[3] mat
 float32 pose
 # velocity [m/sec]
 float32 velocity
+# error [m/sec] (= feedback-command)
+float32 velocity_error
