@@ -23,6 +23,8 @@ find_package(tf2_ros REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(ros2_imd_interfaces REQUIRED)
 
+find_package(std_srvs REQUIRED)
+
 add_subdirectory(${PROJECT_SOURCE_DIR}/IMDController)
 set(imd_controller_DIR ${PROJECT_SOURCE_DIR}/IMDController/CMakeFiles/Export/share/cmake/imd_controller)
 find_package(imd_controller REQUIRED)
@@ -52,6 +54,7 @@ ament_target_dependencies(imd_node
   tf2_ros
   geometry_msgs
   ros2_imd_interfaces
+  std_srvs
 )
 
 install(TARGETS imd_node

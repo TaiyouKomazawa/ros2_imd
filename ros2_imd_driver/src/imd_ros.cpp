@@ -18,8 +18,8 @@ IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &optio
 
     this->declare_parameter("publish_tf", true);
 
-    this->declare_parameter("mcp2210_serial_number");
-    this->declare_parameter("mcp2210_cs_pin");
+    this->declare_parameter("mcp2210_serial_number", "00000000000");
+    this->declare_parameter("mcp2210_cs_pin", 0);
 
     for (auto &m : motor_)
     {
@@ -35,21 +35,28 @@ IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &optio
         this->declare_parameter(m.name + ctrl_name_.velocity + ctrl_name_.param.kd, 0.0);
     }
 
-    rclcpp::Parameter param_serial_num;
-    rclcpp::Parameter param_cs_pin;
+    std::string param_serial_num;
+    int param_cs_pin;
     std::wstring mcp2210_serial_number;
     MCP2210Linux::cs_pin_t mcp2210_cs_pin;
 
     publish_tf_ = this->get_parameter("publish_tf").as_bool();
 
-    bool sn_was_set = this->get_parameter("mcp2210_serial_number", param_serial_num);
-    bool cs_was_set = this->get_parameter("mcp2210_cs_pin", param_cs_pin);
+    bool sn_was_set = this->has_parameter("mcp2210_serial_number");
+    if(sn_was_set)
+        param_serial_num = this->get_parameter("mcp2210_serial_number").as_string();
+    if(param_serial_num[0] == 'i') //for launch argument string cast 
+            param_serial_num = param_serial_num.substr(1);
+
+    bool cs_was_set = this->has_parameter("mcp2210_cs_pin");
+    if(cs_was_set)
+        param_cs_pin = this->get_parameter("mcp2210_cs_pin").as_int();
 
     std::wstring sn;
     if (sn_was_set)
     {
         sn = std::wstring_convert<std::codecvt_utf8<wchar_t>>()
-                 .from_bytes(param_serial_num.as_string());
+                 .from_bytes(param_serial_num);
     }
 
     auto dev = MCP2210Linux::get_dev_info();
@@ -83,7 +90,7 @@ IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &optio
 
     if (cs_was_set)
     {
-        mcp2210_cs_pin = (MCP2210Linux::cs_pin_t)param_cs_pin.as_int();
+        mcp2210_cs_pin = (MCP2210Linux::cs_pin_t)param_cs_pin;
 
         if (mcp2210_cs_pin > MCP2210Linux::GP8)
             RCLCPP_WARN(this->get_logger(), "The chip selector pin name is incorrect. So we will use 0 (GP0) instead.\n");
@@ -149,11 +156,7 @@ IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &optio
 
     if (!fatal_init_param)
     {
-        RCLCPP_INFO(this->get_logger(), "Activating controller. Please wait a little while...\n");
-        
-        md_->ctrl_begin(new IMDController::motor_param_t[2]{motor_[0].param, motor_[1].param});
-        
-        RCLCPP_INFO(this->get_logger(), "Controller is running.");
+        resetIMD_();
 
         process_timer_ = this->create_wall_timer(
             std::chrono::milliseconds(10),
@@ -176,6 +179,13 @@ IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &optio
                 rclcpp::QoS(10),
                 sub_cb);
         }
+
+        reset_srv_ = this->create_service<ResetSrv>(
+            "imd_reset",
+            std::bind(
+                &IMDNode::resetSrvCallback_,
+                this,
+                std::placeholders::_1, std::placeholders::_2));
     }
     else
     {
@@ -211,8 +221,29 @@ void IMDNode::publishTransform_(const MotorFeedMsg& msg,
     tf_broadcaster_.sendTransform(transform);
 }
 
+
+void IMDNode::resetIMD_()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    RCLCPP_INFO(this->get_logger(), "Activating controller. Please wait a little while...\n");
+        
+    md_->ctrl_begin(new IMDController::motor_param_t[2]{motor_[0].param, motor_[1].param});
+        
+    RCLCPP_INFO(this->get_logger(), "Controller is running.");
+}
+
+void IMDNode::resetSrvCallback_(const std::shared_ptr<ResetSrv::Request> request, std::shared_ptr<ResetSrv::Response> response)
+{
+    (void)request;
+    (void)response;
+    this->resetIMD_();
+}
+
 void IMDNode::processCallback_()
 {
+    std::lock_guard<std::mutex> lock(mutex_);
+
     for (int i = 0; i < (int)motor_.size(); i++)
     {
         if (motor_[i].cmd_updated)

@@ -16,6 +16,8 @@
 #include <ros2_imd_interfaces/msg/motor_cmd.hpp>
 #include <ros2_imd_interfaces/msg/motor_feed.hpp>
 
+#include <std_srvs/srv/empty.hpp>
+
 #include <tf2_ros/transform_broadcaster.h>
 
 class IMDNode : public rclcpp::Node
@@ -23,8 +25,12 @@ class IMDNode : public rclcpp::Node
     typedef ros2_imd_interfaces::msg::MotorFeed  MotorFeedMsg;
     typedef ros2_imd_interfaces::msg::MotorCmd   MotorCmdMsg;
 
+    typedef std_srvs::srv::Empty ResetSrv;
+
     typedef rclcpp::Publisher<MotorFeedMsg>::SharedPtr MotorFeedPublisher;
     typedef rclcpp::Subscription<MotorCmdMsg>::SharedPtr MotorCmdSubscription;
+
+    typedef rclcpp::Service<ResetSrv>::SharedPtr ResetService;
 
 public:
     IMDNode(
@@ -72,6 +78,8 @@ private:
         } param;
     } ctrl_name_;
 
+    ResetService reset_srv_;
+
     tf2_ros::TransformBroadcaster tf_broadcaster_;
     std::string frame_ns_;
 
@@ -79,11 +87,16 @@ private:
 
     rclcpp::TimerBase::SharedPtr process_timer_;
 
+    std::mutex mutex_;
+
     bool publish_tf_;
 
     void motorCmdCallback_(const MotorCmdMsg::SharedPtr msg, const int m_index);
 
     void publishTransform_(const MotorFeedMsg& msg, const motor_node_t& m);
+
+    void resetIMD_();
+    void resetSrvCallback_(const std::shared_ptr<ResetSrv::Request> request, std::shared_ptr<ResetSrv::Response> response);
 
     void processCallback_();
 };
