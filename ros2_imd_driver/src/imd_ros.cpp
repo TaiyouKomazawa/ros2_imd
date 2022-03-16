@@ -185,7 +185,7 @@ IMDNode::IMDNode(const std::string &name_space, const rclcpp::NodeOptions &optio
             std::bind(
                 &IMDNode::resetSrvCallback_,
                 this,
-                std::placeholders::_1, std::placeholders::_2));
+                std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     }
     else
     {
@@ -233,8 +233,10 @@ void IMDNode::resetIMD_()
     RCLCPP_INFO(this->get_logger(), "Controller is running.");
 }
 
-void IMDNode::resetSrvCallback_(const std::shared_ptr<ResetSrv::Request> request, std::shared_ptr<ResetSrv::Response> response)
+void IMDNode::resetSrvCallback_(const std::shared_ptr<rmw_request_id_t> request_header,
+    const std::shared_ptr<ResetSrv::Request> request, std::shared_ptr<ResetSrv::Response> response)
 {
+    (void)request_header;
     (void)request;
     (void)response;
     this->resetIMD_();

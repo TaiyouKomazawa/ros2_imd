@@ -96,7 +96,8 @@ private:
     void publishTransform_(const MotorFeedMsg& msg, const motor_node_t& m);
 
     void resetIMD_();
-    void resetSrvCallback_(const std::shared_ptr<ResetSrv::Request> request, std::shared_ptr<ResetSrv::Response> response);
+    void resetSrvCallback_(const std::shared_ptr<rmw_request_id_t> request_header,
+        const std::shared_ptr<ResetSrv::Request> request, std::shared_ptr<ResetSrv::Response> response);
 
     void processCallback_();
 };
